@@ -6,11 +6,10 @@ import (
 
 	"github.com/consensys/gnark/backend/plonk"
 	plonk_bn254 "github.com/consensys/gnark/backend/plonk/bn254"
-	"github.com/consensys/gnark/backend/witness"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
-func WriteSolidityTestFile(proof plonk.Proof, publicWitness witness.Witness) error {
+func WriteSolidityTestFile(proof plonk.Proof, PublicKeyCommitment []byte, MsgHash []byte) error {
 
 	// 9. Export the Solidity verifier test
 	fmt.Println("\n--- Exporting Solidity Verifier Test ---")
@@ -25,32 +24,29 @@ func WriteSolidityTestFile(proof plonk.Proof, publicWitness witness.Witness) err
 	pragma solidity ^0.8.25;
 
 	import {Test, console} from "forge-std/Test.sol";
-	import {PlonkVerifier} from "../src/Verifier.sol";
+	import {ZKVerifier} from "../src/ZKVerifier.sol";
 
 	contract VerifierTest is Test {
-	    PlonkVerifier ZkK1;
+	    ZKVerifier ZKV;
 
 	    function setUp() public {
-	        ZkK1 = new PlonkVerifier();
+	        ZKV = new ZKVerifier();
 	    }
 
-	    function test_k1Plonk() public view {
+	    function test_verify() public view {
 	`))
 
 	Proof := proof.(*plonk_bn254.Proof)
-	verifierTestFile.Write([]byte(`bytes memory proof = hex"` + hexutil.Encode(Proof.MarshalSolidity())[2:] + `";`))
-	verifierTestFile.Write([]byte("\n"))
-
-	PI := fmt.Sprintf("%v", publicWitness.Vector())
-
-	verifierTestFile.Write([]byte("uint256[5] memory public_inputs = " + PI + ";\n"))
+	verifierTestFile.Write([]byte(`bytes memory proof = hex"` + hexutil.Encode(Proof.MarshalSolidity())[2:] + `";
+	`))
+	verifierTestFile.Write([]byte(`bytes memory public_key_commitment = hex"` + hexutil.Encode(PublicKeyCommitment)[2:] + `";
+	`))
+	verifierTestFile.Write([]byte(`bytes memory transaction_hash = hex"` + hexutil.Encode(MsgHash)[2:] + `";
+	`))
 
 	// footer
 	verifierTestFile.Write([]byte(`
-	        uint256[] memory inputs = new uint256[](5);
-	        for (uint i = 0; i < 5; i++) inputs[i] = uint256(public_inputs[i]);
-
-	        bool res = ZkK1.Verify(proof, inputs);
+	        bool res = ZKV.Verify(proof, public_key_commitment, transaction_hash);
 	        assertTrue(res);
 	        console.log(res);
 	    }
@@ -58,7 +54,7 @@ func WriteSolidityTestFile(proof plonk.Proof, publicWitness witness.Witness) err
 	`))
 	fmt.Println("Successfully exported solidty/test/Verifier.t.sol")
 
-	fmt.Print("\n\n\n=======================\nPROOF and PUBLIC INPUTS\n=======================\n0x", hexutil.Encode(Proof.MarshalSolidity())[2:], " \"", publicWitness.Vector(), "\"\n")
+	fmt.Print("\n\n\n=======================\nPROOF and PUBLIC INPUTS\n=======================\n0x", hexutil.Encode(Proof.MarshalSolidity())[2:], ", ", hexutil.Encode(PublicKeyCommitment), ", ", hexutil.Encode(MsgHash), "\n")
 
 	return nil
 }

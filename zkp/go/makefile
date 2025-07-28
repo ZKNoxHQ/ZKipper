@@ -12,5 +12,12 @@ init:
 
 setup:
 	go run main.go setup
+
+witness:
+	go run main.go witness
+	
 proof:
 	go run main.go
+
+export-solidity:
+	go run main.go export-solidity

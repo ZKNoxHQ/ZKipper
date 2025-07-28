@@ -20,7 +20,7 @@ import (
 func ComputeTrustedSetup() (constraint.ConstraintSystem, plonk.ProvingKey, plonk.VerifyingKey, error) {
 	// This function runs a trusted setup
 	// and save the files:
-	// - `r1cs.bin`,
+	// - `scs.bin`,
 	// - `proving_key.bin`,
 	// - `verifying_key.bin`.
 	fmt.Println("--- Generating circuit inputs and performing compliance check ---")
@@ -28,18 +28,18 @@ func ComputeTrustedSetup() (constraint.ConstraintSystem, plonk.ProvingKey, plonk
 	// 1. Compile the circuit
 	circuit := VerifCircuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{}
 	fmt.Printf("Compiling circuit...\n")
-	R1CS, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, &circuit)
+	SCS, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, &circuit)
 	if err != nil {
 		fmt.Printf("Error compiling ECDSA circuit: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Printf("BN254 circuit compiled with %d constraints",
-		R1CS.GetNbConstraints())
+		SCS.GetNbConstraints())
 
 	// 2. Perform Groth16 setup
 	fmt.Printf("Starting Plonk setup...\n")
-	A, B, _ := unsafekzg.NewSRS(R1CS)
-	PK, VK, err := plonk.Setup(R1CS, A, B)
+	A, B, _ := unsafekzg.NewSRS(SCS)
+	PK, VK, err := plonk.Setup(SCS, A, B)
 	if err != nil {
 		fmt.Printf("Error during Plonk setup for ECDSA: %v\n", err)
 		os.Exit(1)
@@ -47,7 +47,7 @@ func ComputeTrustedSetup() (constraint.ConstraintSystem, plonk.ProvingKey, plonk
 	fmt.Printf("Setup done.\n")
 
 	// 3. Save to bin files
-	utils.WriteToFile("output/r1cs.bin", R1CS)
+	utils.WriteToFile("output/scs.bin", SCS)
 	utils.WriteToFile("output/proving_key.bin", PK)
 	utils.WriteToFile("output/verifying_key.bin", VK)
 
@@ -68,17 +68,17 @@ func ComputeTrustedSetup() (constraint.ConstraintSystem, plonk.ProvingKey, plonk
 	}
 	fmt.Println("Successfully exported solidty/src/Verifier.sol")
 
-	return R1CS, PK, VK, err
+	return SCS, PK, VK, err
 }
 
 func LoadTrustedSetup() (constraint.ConstraintSystem, plonk.ProvingKey, plonk.VerifyingKey, error) {
-	// 1. Read back the R1CS
-	loadedR1CS := plonk.NewCS(ecc.BN254)
-	err := utils.ReadFromFile("output/r1cs.bin", loadedR1CS)
+	// 1. Read back the SCS
+	loadedSCS := plonk.NewCS(ecc.BN254)
+	err := utils.ReadFromFile("output/scs.bin", loadedSCS)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to read r1cs.bin: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to read scs.bin: %w", err)
 	}
-	fmt.Printf("Read r1cs.bin (Constraints: %d)\n", loadedR1CS.GetNbConstraints())
+	fmt.Printf("Read scs.bin (Constraints: %d)\n", loadedSCS.GetNbConstraints())
 
 	// 2. Read back the proving key
 	loadedPK := plonk.NewProvingKey(ecc.BN254)
@@ -96,5 +96,5 @@ func LoadTrustedSetup() (constraint.ConstraintSystem, plonk.ProvingKey, plonk.Ve
 	}
 	fmt.Println("Read verifying_key.bin")
 
-	return loadedR1CS, loadedPK, loadedVK, nil
+	return loadedSCS, loadedPK, loadedVK, nil
 }

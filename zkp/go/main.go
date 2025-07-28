@@ -25,19 +25,27 @@ import (
 	"zkp/utils"
 
 	"github.com/consensys/gnark/backend/plonk"
+	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/constraint"
-	"github.com/consensys/gnark/frontend"
-
-	"github.com/consensys/gnark-crypto/ecc"
 )
 
 func main() {
 
 	withSetup := false
+	withWitness := false
+	withExportSolidity := false
 
 	for _, arg := range os.Args[1:] {
 		if arg == "setup" {
 			withSetup = true
+			break
+		}
+		if arg == "witness" {
+			withWitness = true
+			break
+		}
+		if arg == "export-solidity" {
+			withExportSolidity = true
 			break
 		}
 	}
@@ -55,41 +63,57 @@ func main() {
 		}
 
 	} else {
-		// Proof generation
+		// Setup is already computed
 		R1CS, PK, VK, err = circuit.LoadTrustedSetup()
-		witnessCircuit, err := circuit.GenerateWitness()
-		if err != nil {
-			log.Fatalf("Failed to generate the witness: %v", err)
-		}
 		if err != nil {
 			panic(err)
 		}
 
-		witnessFull, err := frontend.NewWitness(&witnessCircuit, ecc.BN254.ScalarField())
-		if err != nil {
-			log.Fatalf("failed to create witness: %v", err)
+		var witness, publicInput witness.Witness
+
+		if withWitness {
+			witness, publicInput, err = circuit.GenerateWitness()
+			if err != nil {
+				log.Fatalf("Failed to generate the witness: %v", err)
+				panic(err)
+			}
+			fmt.Println("Witness generated.")
+		} else {
+			// Load the witness and public input and compute the proof
+			// Witness
+			fmt.Println("Loading witness and public input")
+			witness, publicInput, err = circuit.LoadWitnessAndPublicInput()
+			if err != nil {
+				log.Fatalf("Failed to load the witness and public input: %v", err)
+				panic(err)
+			}
+			fmt.Println("Witness loaded.")
+
+			// Proof
+			fmt.Println("\n--- Proving with loaded setup ---")
+			startProve := time.Now()
+			proof, err := plonk.Prove(R1CS, PK, witness)
+			fmt.Printf("Proof GENERATED (%.1fms).\n", float64(time.Since(startProve).Milliseconds()))
+
+			// Verify the proof
+			err = plonk.Verify(proof, VK, publicInput)
+			if err != nil {
+				fmt.Printf("Error verifying the proof: %v\n", err)
+				os.Exit(1)
+			}
+
+			if withExportSolidity {
+				// Read output/public_input.json
+				var PublicInput circuit.PublicInputJSON
+				MsgHash, Com, err := circuit.ReadPublicInputFromFile("output/public_input.json", &PublicInput)
+				if err != nil {
+					fmt.Printf("Error while reading output/public_input.json: %v\n", err)
+					os.Exit(1)
+				}
+				// Export solidity test file
+				utils.WriteSolidityTestFile(proof, Com, MsgHash)
+			}
 		}
-
-		publicWitness, err := witnessFull.Public()
-		if err != nil {
-			log.Fatalf("failed to get public witness: %v", err)
-		}
-		// 6. Perform a new proof and verification using the loaded artifacts
-		fmt.Println("\n--- Proving with loaded setup ---")
-
-		// Prove
-		startProve := time.Now()
-		proof, err := plonk.Prove(R1CS, PK, witnessFull)
-		fmt.Printf("Proof GENERATED (%.1fms).\n", float64(time.Since(startProve).Milliseconds()))
-
-		// Verify
-		err = plonk.Verify(proof, VK, publicWitness)
-		if err != nil {
-			fmt.Printf("Error verifying the proof: %v\n", err)
-			os.Exit(1)
-		}
-
-		utils.WriteSolidityTestFile(proof, publicWitness)
-
 	}
+
 }

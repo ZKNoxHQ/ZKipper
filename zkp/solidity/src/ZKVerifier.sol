@@ -2,10 +2,13 @@
 pragma solidity ^0.8.0;
 
 import {PlonkVerifier} from "./Verifier.sol";
-import {console} from "forge-std/Test.sol";
 
 contract ZKVerifier {
     PlonkVerifier PlonkV;
+
+    constructor() {
+        PlonkV = new PlonkVerifier();
+    }
 
     function Verify(bytes calldata proof, bytes calldata public_key_commitment, bytes calldata transaction_hash)
         public
@@ -26,12 +29,6 @@ contract ZKVerifier {
         public_input[2] = uint256((thash >> 64)) & mask;
         public_input[3] = uint256((thash >> 128)) & mask;
         public_input[4] = uint256((thash >> 192)) & mask; // Most significant 64 bits
-        console.logBytes(proof);
-        console.log(public_input[0]);
-        console.log(public_input[1]);
-        console.log(public_input[2]);
-        console.log(public_input[3]);
-        console.log(public_input[4]);
 
         // calling the plonk verifier verification
         return PlonkV.Verify(proof, public_input);

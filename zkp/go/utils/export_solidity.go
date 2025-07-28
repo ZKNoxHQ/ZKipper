@@ -37,12 +37,12 @@ func WriteSolidityTestFile(proof plonk.Proof, PublicKeyCommitment []byte, MsgHas
 	`))
 
 	Proof := proof.(*plonk_bn254.Proof)
-	verifierTestFile.Write([]byte(`bytes memory proof = hex"` + hexutil.Encode(Proof.MarshalSolidity())[2:] + `";
-	`))
-	verifierTestFile.Write([]byte(`bytes memory public_key_commitment = hex"` + hexutil.Encode(PublicKeyCommitment)[2:] + `";
-	`))
-	verifierTestFile.Write([]byte(`bytes memory transaction_hash = hex"` + hexutil.Encode(MsgHash)[2:] + `";
-	`))
+	verifierTestFile.Write([]byte(`bytes memory proof = hex"` + hexutil.Encode(Proof.MarshalSolidity())[2:] + `";`))
+	verifierTestFile.Write([]byte("\n"))
+	verifierTestFile.Write([]byte(`bytes memory public_key_commitment = hex"` + hexutil.Encode(PublicKeyCommitment)[2:] + `";`))
+	verifierTestFile.Write([]byte("\n"))
+	verifierTestFile.Write([]byte(`bytes memory transaction_hash = hex"` + hexutil.Encode(MsgHash)[2:] + `";`))
+	verifierTestFile.Write([]byte("\n"))
 
 	// footer
 	verifierTestFile.Write([]byte(`
@@ -54,7 +54,7 @@ func WriteSolidityTestFile(proof plonk.Proof, PublicKeyCommitment []byte, MsgHas
 	`))
 	fmt.Println("Successfully exported solidty/test/Verifier.t.sol")
 
-	fmt.Print("\n\n\n=======================\nPROOF and PUBLIC INPUTS\n=======================\n0x", hexutil.Encode(Proof.MarshalSolidity())[2:], ", ", hexutil.Encode(PublicKeyCommitment), ", ", hexutil.Encode(MsgHash), "\n")
+	fmt.Print("\n\n\n=======================\nPROOF and PUBLIC INPUTS\n=======================\n0x", hexutil.Encode(Proof.MarshalSolidity())[2:], ", \n", hexutil.Encode(PublicKeyCommitment), ", \n", hexutil.Encode(MsgHash), "\n")
 
 	return nil
 }

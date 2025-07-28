@@ -4,6 +4,13 @@ zkp/solidity/broadcast/
 zkp/solidity/cache/
 zkp/solidity/out/
 zkp/solidity/test/Verifier.t.sol
-zkp/witness_input.json
-zkp/signed_transaction.json
-zkp/pub_x.json
+zkp/go/go.mod
+zkp/go/go.sum
+zkp/go/output/proving_key.bin
+zkp/go/output/public_input.bin
+zkp/go/output/public_input.json
+zkp/go/output/scs.bin
+zkp/go/output/verifying_key.bin
+zkp/go/output/witness.bin
+zkp/go/output/witness.json
+

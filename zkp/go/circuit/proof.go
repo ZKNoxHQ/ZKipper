@@ -17,12 +17,11 @@ import (
 
 // VerifCircuit defines the circuit structure as provided by you.
 type VerifCircuit[T, S emulated.FieldParams] struct {
-	// PublicKeyHash is 32 bytes, but we split it into two 16-byte variables to fit into BN254 field
-	PublicKeyHash frontend.Variable   `gnark:",public"`
-	Msg           emulated.Element[S] `gnark:",public"`
-	Signature     ecdsa.Signature[S]
-	PublicKey     ecdsa.PublicKey[T, S] // actual public key is also a private input
-	Nonce         frontend.Variable
+	Commitment frontend.Variable   `gnark:",public"`
+	Msg        emulated.Element[S] `gnark:",public"`
+	Signature  ecdsa.Signature[S]
+	PublicKey  ecdsa.PublicKey[T, S] // actual public key is also a private input
+	Nonce      frontend.Variable
 }
 
 func (c *VerifCircuit[T, S]) Define(api frontend.API) error {
@@ -53,10 +52,9 @@ func (c *VerifCircuit[T, S]) Define(api frontend.API) error {
 	}
 	h.Write(y)
 	h.Write(c.Nonce)
-	computedHash := h.Sum()
 
 	// Check the hash against the public commitment
-	api.AssertIsEqual(c.PublicKeyHash, computedHash)
+	api.AssertIsEqual(c.Commitment, h.Sum())
 
 	// Verifying the ECDSA signature
 	c.PublicKey.Verify(api, sw_emulated.GetCurveParams[emparams.Secp256k1Fp](), &c.Msg, &c.Signature)

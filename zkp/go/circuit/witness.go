@@ -54,25 +54,25 @@ func GenerateWitness() (witness.Witness, witness.Witness, error) {
 	}
 
 	// compute the hash of the public key
-	hnew := cryptomimc.NewMiMC()
-	_, err = hnew.Write(pubXBytes)
+	h := cryptomimc.NewMiMC()
+	_, err = h.Write(pubXBytes)
 	if err != nil {
 		panic(err)
 	}
-	_, err = hnew.Write(pubYBytes)
+	_, err = h.Write(pubYBytes)
 	if err != nil {
 		panic(err)
 	}
-	_, err = hnew.Write(nonceBytes)
+	_, err = h.Write(nonceBytes)
 	if err != nil {
 		panic(err)
 	}
-	pubHash := hnew.Sum(nil)
+	commitment := h.Sum(nil)
 
 	// now we prepare the witness for the circuit
 	witnessCircuit := VerifCircuit[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
 		// we splitted the public key hash into two 16-byte variables to fit into BN254 field
-		PublicKeyHash: frontend.Variable(pubHash),
+		Commitment: frontend.Variable(commitment),
 		// we construct the public key as non-native element. NB! this means that both X and Y coordinates are 4 limbs of 64 bytes each, so 8 limbs total
 		PublicKey: ecdsa.PublicKey[emulated.Secp256k1Fp, emulated.Secp256k1Fr]{
 			X: emulated.ValueOf[emulated.Secp256k1Fp](pubXBytes),
@@ -98,7 +98,7 @@ func GenerateWitness() (witness.Witness, witness.Witness, error) {
 	// Save PublicInput to a file
 	PublicInput := PublicInputJSON{
 		MsgHash: hex.EncodeToString(msgHashBytes),
-		Com:     hex.EncodeToString(pubHash),
+		Com:     hex.EncodeToString(commitment),
 	}
 	OutputJSON, err := json.MarshalIndent(PublicInput, "", "  ")
 	if err != nil {

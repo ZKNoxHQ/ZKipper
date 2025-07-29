@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/big"
 	"os"
 	"zkp/utils"
 
@@ -46,14 +47,16 @@ func GenerateWitness() (witness.Witness, witness.Witness, error) {
 		return EmptyWitness, EmptyWitness, fmt.Errorf("Error while reading input/transaction_input.json")
 	}
 
-	// Nonce (160 bits)
-	nonceBytes := make([]byte, 20)
-	_, err = rand.Read(nonceBytes)
+	// Nonce is a random field element (in bytes)
+	var nonce big.Int
+	noncePtr, err := rand.Int(rand.Reader, ecc.BN254.ScalarField())
 	if err != nil {
 		return EmptyWitness, EmptyWitness, fmt.Errorf("Error while creating the nonce: %w\n", err)
 	}
+	nonce.Set(noncePtr)
+	nonceBytes := nonce.Bytes()
 
-	// compute the hash of the public key
+	// compute Commitment = H(public key, Nonce)
 	h := cryptomimc.NewMiMC()
 	_, err = h.Write(pubXBytes)
 	if err != nil {
